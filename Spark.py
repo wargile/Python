@@ -19,13 +19,16 @@ Getting and building Spark on Windows:
 cd c:/
 git clone https://github.com/apache/spark
 REM or:
-git clone git://github.com/apache/spark.git -b branch-1.3
+git clone git://github.com/apache/spark.git -b branch-1.3.1
 cd spark
-sbt/sbt assembly
+sbt/sbt assembly (old solution)
+(NOTE: New location:) build/sbt assembly
 -----------------------------------------------------------------
 # NOTE: Fix for 'winutils not found' error on Spark on Win7:
-# http://qnalist.com/questions/4994960/run-spark-unit-test-on-windows-7
-# https://social.msdn.microsoft.com/forums/azure/en-US/28a57efb-082b-424b-8d9e-731b1fe135de/please-read-if-experiencing-job-failures?forum=hdinsight
+# Copy winutils.exe to c:\tools\utils\hadoop\bin
+# Add environment vars HADOOP_HOME and HADOOP_CONF with this dir
+# Get winutils.exe from: http://public-repo-1.hortonworks.com/hdp-win-alpha/winutils.exe (64 bit)
+# See also: https://issues.apache.org/jira/browse/SPARK-2356
 -----------------------------------------------------------------
 Spark in Hortonworks Sandbox:
 http://hortonworks.com/hadoop-tutorial/using-apache-spark-hdp/
@@ -41,8 +44,8 @@ https://github.com/hvesalai/scala-mode2
 Strata + Hadoop 2015:
 https://www.youtube.com/watch?v=1KvTZZAkHy0
 -----------------------------------------------------------------
-Spark Summit East 2015, slides and PDF's:
-http://spark-summit.org/east/2015
+Spark Summit, slides and PDF's:
+http://spark-summit.org
 https://www.youtube.com/watch?v=ESV4J_jxanc&list=PL-x35fyliRwger2GwWLG4vigDRGCDyzCI
 '''
 
@@ -58,7 +61,7 @@ from operator import add
 from ast import literal_eval
 
 folder = "c:/coding/Hadoop/Spark/"
-mr_folder = "wuthering_heights_out2"
+mr_folder = "wuthering_heights_out7"
 
 with open(folder + "wuthering_heights_out.txt", "wb") as outfile:
     content = open(folder + "wuthering_heights.txt", "rb").read()
@@ -80,7 +83,7 @@ for f in files:
         words.append(tuple(literal_eval(line.strip())))
 
 words_sorted = sorted(words, key=operator.itemgetter(1), reverse=True)
-print words_sorted[0:3]
+print words_sorted[0:30] # Print some of the highest frequencies
 print words_sorted[0][1] # Just get the frequency part
 
 # Try some log parsing
@@ -203,3 +206,40 @@ from pyspark.streaming import StreamingContext
 # 3) Train a ML model with the MLLib on the SQL RDD
 # 4) Load live Twitter data with the streaming API, and use that as test data for the ML model
 
+
+# -----------------------------------------------------------------------------------------------------------------------------------------
+
+# Getting files from Hadoop HDFS into Spark:
+# NOTE: To find the HDFS address, look in the file core-site.xml (find -name 'core-site.xml')
+f = sc.textFile("hdfs://0.0.0.0:8020/user/hue/iis3.log")
+my_data = f.filter(lambda line: "139.116.15.40" in line).collect()
+print my_data[1:5]
+my_data = f.filter(lambda line: line.startswith("139.116.15.37,POSTEN")).collect()
+split_data = my_data[0].split(',')
+for x in split_data[0]:
+    print x
+
+# http://hortonworks.com/hadoop-tutorial/interacting-with-data-on-hdp-using-scala-and-apache-spark/
+# cd /home/hdfs
+# vi littlelog.csv
+# hadoop fs -put ./littlelog.csv /tmp/
+file = sc.textFile("hdfs://sandbox.hortonworks.com:8020/tmp/littlelog.csv")
+fltr = file.filter(lambda x: len(x) > 0) # skip blank lines
+keys = fltr.map(lambda x: x.split(",")).map(lambda a: a[-2]) # Count state (last element - 1)
+my_keys = keys.collect()
+for key in my_keys:
+    print key
+
+stateCnt = keys.map(lambda key: (key, 1))
+stateMap = stateCnt.countByKey()
+for state, count in stateMap.iteritems():
+    print state, count
+
+# Or do:
+states = stateCnt.collect()
+stateCollection = {}
+for x, y in states:
+   if x not in stateCollection:
+      stateCollection[x] = 1
+   else:
+      stateCollection[x] += 1
