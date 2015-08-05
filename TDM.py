@@ -46,9 +46,9 @@ def cosine_similarity(x, y):
         denominator1 = 0
         denominator2 = 0
         for counter in range(0, len(x)-1):
-            denominator1 = denominator1 + abs(x[counter]**2)
+            denominator1 = denominator1 + abs(x[counter]**2) # TODO: abs() not need here? Always positive!
         for counter in range(0, len(y)-1):
-            denominator2 = denominator2 + abs(y[counter]**2)
+            denominator2 = denominator2 + abs(y[counter]**2) # TODO: abs() not need here? Always positive!
   
     return numerator / (math.sqrt(denominator1) * math.sqrt(denominator2))
 

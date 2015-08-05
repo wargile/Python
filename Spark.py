@@ -21,8 +21,15 @@ git clone https://github.com/apache/spark
 REM or:
 git clone git://github.com/apache/spark.git -b branch-1.3.1
 cd spark
-sbt/sbt assembly (old solution)
-(NOTE: New location:) build/sbt assembly
+
+export spark_hive=true (NOTE: Seems to be deprecated. Use -PHive instead? See below!)
+
+build/sbt assembly
+(Old solution: sbt/sbt assembly)
+
+build/sbt -Pyarn -Phadoop-2.6 -Dhadoop.version=2.4.0 -Phive -Phive-thriftserver assembly
+mvn -Pyarn -Phadoop-2.6 -Dhadoop.version=2.6.0 -Phive -Phive-thriftserver -DskipTests clean package
+
 -----------------------------------------------------------------
 # NOTE: Fix for 'winutils not found' error on Spark on Win7:
 # Copy winutils.exe to c:\tools\utils\hadoop\bin
@@ -49,7 +56,13 @@ http://spark-summit.org
 https://www.youtube.com/watch?v=ESV4J_jxanc&list=PL-x35fyliRwger2GwWLG4vigDRGCDyzCI
 '''
 
-# Docs: https://spark.apache.org/docs/latest/programming-guide.html
+# Docs:
+# https://spark.apache.org/documentation.html
+# https://spark.apache.org/docs/latest/programming-guide.html
+# https://spark.apache.org/docs/latest/api/python/index.html
+# https://spark.apache.org/docs/latest/api/python/pyspark.html#pyspark.RDD
+# http://databricks.gitbooks.io/databricks-spark-knowledge-base/content/
+
 # Start Spark Python Shell with: bin/pyspark.cmd
 # Browser GUI: http://localhost:4040/stages/
 
@@ -89,7 +102,7 @@ print words_sorted[0][1] # Just get the frequency part
 # Try some log parsing
 f = sc.textFile("file:///" + "C:/coding/Hadoop/pig/MapReduceInputData/iis3.log")
 errors = f.filter(lambda line: "139.116.15.40" in line).collect()
-print errors[1:3]
+print errors[0:3]
 errors = f.filter(lambda line: line.startswith("139.116.15.37,POSTEN")).collect()
 f.filter(lambda x: x.contains("LMKBRUKER")).count()
 
@@ -123,11 +136,13 @@ messages_subset = messages.map(lambda p: Row(formtypename=p[1]))
 
 # See example: http://spark.apache.org/docs/latest/sql-programming-guide.html 
 schema_messages = sqlContext.inferSchema(messages_subset)
+# NOTE: inferSchema is deprecated, please use createDataFrame instead
 
 schemaString = "ip user date time"
 fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
 schema = StructType(fields)
-schemaPeople = sqlContext.applySchema(messages_subset, schema)
+schema_messages = sqlContext.applySchema(messages_subset, schema)
+# NOTE: applySchema is deprecated, please use createDataFrame instead
 
 schema_messages.registerTempTable("messages_subset")
 
@@ -243,3 +258,11 @@ for x, y in states:
       stateCollection[x] = 1
    else:
       stateCollection[x] += 1
+
+# TODO: Look at DataFrames:
+# https://databricks.com/blog/2015/06/02/statistical-and-mathematical-functions-with-dataframes-in-spark.html
+# https://databricks.com/blog/2015/02/17/introducing-dataframes-in-spark-for-large-scale-data-science.html
+from pyspark.sql import SQLContext
+sqlContext = SQLContext(sc)
+json_file = sqlContext.read.json("C:/coding/Hadoop/pig/MapReduceInputData/example2.json")
+json_file = sqlContext.load("C:/coding/Hadoop/pig/MapReduceInputData/example2.json", format="json")
